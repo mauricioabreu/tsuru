@@ -210,14 +210,6 @@ var PermissionRegistry = (&registry{}).addWithCtx(
 	"healing.read",
 	"healing.update",
 	"healing.delete",
-).addWithCtx(
-	"nodecontainer", []permTypes.ContextType{permTypes.CtxPool},
-).add(
-	"nodecontainer.create",
-	"nodecontainer.read",
-	"nodecontainer.update",
-	"nodecontainer.update.upgrade",
-	"nodecontainer.delete",
 ).add(
 	"install.manage",
 ).add(

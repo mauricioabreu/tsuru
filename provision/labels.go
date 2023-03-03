@@ -25,7 +25,6 @@ const (
 	labelIsAsleep          = "is-asleep"
 	labelIsIsolatedRun     = "is-isolated-run"
 	labelIsIsolatedRunNew  = "is-isolated-run-version"
-	labelIsNodeContainer   = "is-node-container"
 	labelIsService         = "is-service"
 	labelIsHeadlessService = "is-headless-service"
 	labelIsRoutable        = "is-routable"
@@ -36,9 +35,6 @@ const (
 	LabelAppPlatform  = "app-platform"
 	LabelAppVersion   = "app-version"
 	LabelAppTeamOwner = "app-team"
-
-	labelNodeContainerName = "node-container-name"
-	labelNodeContainerPool = "node-container-pool"
 
 	labelNodeInternalPrefix = "internal-"
 	labelNodeAddr           = labelNodeInternalPrefix + "node-addr"
@@ -127,10 +123,6 @@ func (s *LabelSet) ToRoutableSelector() map[string]string {
 
 func (s *LabelSet) ToAppSelector() map[string]string {
 	return withPrefix(subMap(s.Labels, LabelAppName), s.Prefix)
-}
-
-func (s *LabelSet) ToNodeContainerSelector() map[string]string {
-	return withPrefix(subMap(s.Labels, labelNodeContainerName, labelNodeContainerPool), s.Prefix)
 }
 
 func (s *LabelSet) ToNodeSelector() map[string]string {
@@ -502,10 +494,9 @@ func ProcessLabels(ctx context.Context, opts ProcessLabelsOpts) (*LabelSet, erro
 }
 
 type ServiceAccountLabelsOpts struct {
-	App               App
-	NodeContainerName string
-	Provisioner       string
-	Prefix            string
+	App         App
+	Provisioner string
+	Prefix      string
 }
 
 func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
@@ -513,37 +504,13 @@ func ServiceAccountLabels(opts ServiceAccountLabelsOpts) *LabelSet {
 		labelIsTsuru:     strconv.FormatBool(true),
 		labelProvisioner: opts.Provisioner,
 	}
-	if opts.App == nil {
-		labelMap[labelNodeContainerName] = opts.NodeContainerName
-	} else {
+	if opts.App != nil {
 		labelMap[LabelAppName] = opts.App.GetName()
 	}
 	return &LabelSet{
 		Labels: labelMap,
 		Prefix: opts.Prefix,
 	}
-}
-
-type NodeContainerLabelsOpts struct {
-	Name         string
-	CustomLabels map[string]string
-	Pool         string
-	Provisioner  string
-	Prefix       string
-}
-
-func NodeContainerLabels(opts NodeContainerLabelsOpts) *LabelSet {
-	labels := map[string]string{
-		labelIsTsuru:           strconv.FormatBool(true),
-		labelIsNodeContainer:   strconv.FormatBool(true),
-		labelProvisioner:       opts.Provisioner,
-		labelNodeContainerName: opts.Name,
-		labelNodeContainerPool: opts.Pool,
-	}
-	for k, v := range opts.CustomLabels {
-		labels[k] = v
-	}
-	return &LabelSet{Labels: labels, Prefix: opts.Prefix}
 }
 
 type NodeLabelsOpts struct {

@@ -37,9 +37,6 @@ import (
 func init() {
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AuthorizationRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AuthorizationRequiredHandler(moveContainersHandler))
-	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AuthorizationRequiredHandler(bsUpgradeHandler))
-	api.RegisterHandler("/docker/bs/env", "POST", api.AuthorizationRequiredHandler(bsEnvSetHandler))
-	api.RegisterHandler("/docker/bs", "GET", api.AuthorizationRequiredHandler(bsConfigGetHandler))
 	api.RegisterHandler("/docker/logs", "GET", api.AuthorizationRequiredHandler(logsConfigGetHandler))
 	api.RegisterHandler("/docker/logs", "POST", api.AuthorizationRequiredHandler(logsConfigSetHandler))
 }
@@ -173,18 +170,6 @@ func moveContainersPermissionContexts(from, to string) ([]permTypes.PermissionCo
 		permContexts = append(permContexts, permission.Context(permTypes.CtxPool, pool))
 	}
 	return permContexts, nil
-}
-
-func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return errors.New("this route is deprecated, please use POST /docker/nodecontainer/{name} (node-container-update command)")
-}
-
-func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return errors.New("this route is deprecated, please use GET /docker/nodecontainer/{name} (node-container-info command)")
-}
-
-func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return errors.New("this route is deprecated, please use POST /docker/nodecontainer/{name}/upgrade (node-container-upgrade command)")
 }
 
 // title: logs config

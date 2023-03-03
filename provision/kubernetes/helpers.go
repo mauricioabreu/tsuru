@@ -21,7 +21,6 @@ import (
 	tsuruNet "github.com/tsuru/tsuru/net"
 	"github.com/tsuru/tsuru/provision"
 	tsuruv1 "github.com/tsuru/tsuru/provision/kubernetes/pkg/apis/tsuru/v1"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/servicemanager"
 	"github.com/tsuru/tsuru/set"
@@ -61,11 +60,6 @@ var svcIgnoredLabels = []string{
 func serviceAccountNameForApp(a provision.App) string {
 	name := provision.ValidKubeName(a.GetName())
 	return fmt.Sprintf("app-%s", name)
-}
-
-func serviceAccountNameForNodeContainer(nodeContainer nodecontainer.NodeContainerConfig) string {
-	name := provision.ValidKubeName(nodeContainer.Name)
-	return fmt.Sprintf("node-container-%s", name)
 }
 
 func deploymentNameForApp(a provision.App, process string, version int) string {
@@ -860,33 +854,6 @@ func cleanupServices(ctx context.Context, client *ClusterClient, a provision.App
 		}
 	}
 	return nil
-}
-
-func cleanupDaemonSet(ctx context.Context, client *ClusterClient, name, pool string) error {
-	dsName := daemonSetName(name, pool)
-	ns := client.PoolNamespace(pool)
-	ds, err := client.AppsV1().DaemonSets(ns).Get(ctx, dsName, metav1.GetOptions{})
-	if err != nil {
-		if k8sErrors.IsNotFound(err) {
-			return nil
-		}
-		return errors.WithStack(err)
-	}
-	err = client.AppsV1().DaemonSets(ns).Delete(ctx, dsName, metav1.DeleteOptions{
-		PropagationPolicy: propagationPtr(metav1.DeletePropagationForeground),
-	})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return errors.WithStack(err)
-	}
-	ls := provision.NodeContainerLabels(provision.NodeContainerLabelsOpts{
-		Name:        name,
-		Pool:        pool,
-		Provisioner: provisionerName,
-		Prefix:      tsuruLabelPrefix,
-	})
-	return cleanupPods(ctx, client, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set(ls.ToNodeContainerSelector())).String(),
-	}, ds)
 }
 
 func cleanupPod(ctx context.Context, client *ClusterClient, podName, namespace string) error {

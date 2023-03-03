@@ -36,7 +36,6 @@ var (
 		quotaTest(),
 		teamTest(),
 		poolAdd(),
-		nodeContainerHostCert(),
 		nodeHealer(),
 		platformAdd(),
 		exampleApps(),
@@ -444,25 +443,6 @@ func poolAdd() ExecFlow {
 			res := T("pool-remove", "-y", poolName).Run(env)
 			c.Check(res, ResultOk)
 		}
-	}
-	return flow
-}
-
-func nodeContainerHostCert() ExecFlow {
-	flow := ExecFlow{
-		requires: []string{"cacert"},
-	}
-	flow.forward = func(c *check.C, env *Environment) {
-		res := T("node-container-add", "hostcert", "--privileged", "--image", "tsuru/hostcert", "-r", "hostconfig.pidmode=host", "-r", "config.cmd.0="+env.Get("cacert")).WithNoExpand().Run(env)
-		c.Assert(res, ResultOk)
-		res = T("node-container-upgrade", "hostcert", "-y").Run(env)
-		c.Assert(res, ResultOk)
-		// Wait for docker daemon restart in nodes
-		time.Sleep(time.Minute * 1)
-	}
-	flow.backward = func(c *check.C, env *Environment) {
-		res := T("node-container-delete", "hostcert", "-k", "-y").Run(env)
-		c.Assert(res, ResultOk)
 	}
 	return flow
 }

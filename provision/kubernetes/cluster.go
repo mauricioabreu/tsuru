@@ -69,7 +69,6 @@ const (
 	ephemeralStorageKey           = "ephemeral-storage"
 	preStopSleepKey               = "pre-stop-sleep"
 	disableDefaultNodeSelectorKey = "disable-default-node-selector"
-	disableNodeContainers         = "disable-node-containers"
 	disableUnitRegisterCmdKey     = "disable-unit-register"
 	buildPlanKey                  = "build-plan"
 	buildPlanSideCarKey           = "build-plan-sidecar"

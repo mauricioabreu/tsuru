@@ -760,12 +760,6 @@ Maximum amount of threads to be created when starting new containers, so tsuru
 doesn't start too much threads in the process of starting 1000 units, for
 instance. Defaults to 0 which means unlimited.
 
-docker:nodecontainer:max-workers
-++++++++++++++++++++++++++++++++
-
-Same as ``docker:max-workers`` but applies only to when starting new node containers.
-Defaults to 0 which means unlimited.
-
 .. _config_docker_router:
 
 docker:deploy-cmd

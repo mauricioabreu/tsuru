@@ -106,7 +106,6 @@ var (
 	TargetTypeRole            = TargetType("role")
 	TargetTypePlatform        = TargetType("platform")
 	TargetTypePlan            = TargetType("plan")
-	TargetTypeNodeContainer   = TargetType("node-container")
 	TargetTypeInstallHost     = TargetType("install-host")
 	TargetTypeEventBlock      = TargetType("event-block")
 	TargetTypeCluster         = TargetType("cluster")
@@ -269,8 +268,6 @@ func GetTargetType(t string) (TargetType, error) {
 		return TargetTypePlatform, nil
 	case "plan":
 		return TargetTypePlan, nil
-	case "node-container":
-		return TargetTypeNodeContainer, nil
 	case "install-host":
 		return TargetTypeInstallHost, nil
 	case "event-block":

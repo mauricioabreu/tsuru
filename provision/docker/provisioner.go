@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
 	clusterStorage "github.com/tsuru/docker-cluster/storage"
-	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
@@ -33,12 +32,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
-	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
 	"github.com/tsuru/tsuru/provision/node"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
-	"github.com/tsuru/tsuru/queue"
 	_ "github.com/tsuru/tsuru/router/api"
 	_ "github.com/tsuru/tsuru/router/galebv2"
 	_ "github.com/tsuru/tsuru/router/routertest"
@@ -86,7 +82,6 @@ var (
 	_ provision.UnitStatusProvisioner     = &dockerProvisioner{}
 	_ provision.NodeProvisioner           = &dockerProvisioner{}
 	_ provision.NodeRebalanceProvisioner  = &dockerProvisioner{}
-	_ provision.NodeContainerProvisioner  = &dockerProvisioner{}
 	_ provision.UnitFinderProvisioner     = &dockerProvisioner{}
 	_ provision.AppFilterProvisioner      = &dockerProvisioner{}
 	_ provision.BuilderDeploy             = &dockerProvisioner{}
@@ -136,7 +131,6 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if err != nil {
 		return err
 	}
-	p.cluster.AddHook(cluster.HookEventBeforeContainerCreate, &internalNodeContainer.ClusterHook{Provisioner: p})
 	if tsuruHealer.HealerInstance != nil {
 		healer := hookHealer{p: p}
 		p.cluster.Healer = healer
@@ -269,10 +263,6 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	err := internalNodeContainer.RegisterQueueTask(p)
-	if err != nil {
-		return err
-	}
 	return p.initDockerCluster()
 }
 
@@ -791,11 +781,6 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 }
 
 func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error) {
-	const (
-		logBackendsEnv      = "LOG_BACKENDS"
-		logDocKeyFormat     = "LOG_%s_DOC"
-		tsuruLogBackendName = "tsuru"
-	)
 	isBS, err := container.LogIsBS(app.GetPool())
 	if err != nil {
 		return false, "", err
@@ -805,37 +790,8 @@ func (p *dockerProvisioner) LogsEnabled(app provision.App) (bool, string, error)
 		msg := fmt.Sprintf("Logs not available through tsuru. Enabled log driver is %q.", driver)
 		return false, msg, nil
 	}
-	bsContainer, err := nodecontainer.LoadNodeContainer(app.GetPool(), nodecontainer.BsDefaultName)
-	if err != nil {
-		return false, "", err
-	}
-	envs := bsContainer.EnvMap()
-	enabledBackends := envs[logBackendsEnv]
-	if enabledBackends == "" {
-		return true, "", nil
-	}
-	backendsList := strings.Split(enabledBackends, ",")
-	for i := range backendsList {
-		backendsList[i] = strings.TrimSpace(backendsList[i])
-		if backendsList[i] == tsuruLogBackendName {
-			return true, "", nil
-		}
-	}
-	var docs []string
-	for _, backendName := range backendsList {
-		keyName := fmt.Sprintf(logDocKeyFormat, strings.ToUpper(backendName))
-		backendDoc := envs[keyName]
-		var docLine string
-		if backendDoc == "" {
-			docLine = fmt.Sprintf("* %s", backendName)
-		} else {
-			docLine = fmt.Sprintf("* %s: %s", backendName, backendDoc)
-		}
-		docs = append(docs, docLine)
-	}
-	fullDoc := fmt.Sprintf("Logs not available through tsuru. Enabled log backends are:\n%s",
-		strings.Join(docs, "\n"))
-	return false, fullDoc, nil
+
+	return true, "", nil
 }
 
 func pluralize(str string, sz int) string {
@@ -1033,21 +989,8 @@ func (p *dockerProvisioner) AddNode(ctx context.Context, opts provision.AddNodeO
 	if err != nil {
 		return err
 	}
-	q, err := queue.Queue()
-	if err != nil {
-		return err
-	}
-	jobParams := monsterqueue.JobParams{"endpoint": opts.Address, "metadata": opts.Metadata}
-	var job monsterqueue.Job
-	if opts.WaitTO != 0 {
-		job, err = q.EnqueueWait(internalNodeContainer.QueueTaskName, jobParams, opts.WaitTO)
-	} else {
-		_, err = q.Enqueue(internalNodeContainer.QueueTaskName, jobParams)
-	}
-	if err == nil && job != nil {
-		_, err = job.Result()
-	}
-	return err
+
+	return nil
 }
 
 func (p *dockerProvisioner) UpdateNode(ctx context.Context, opts provision.UpdateNodeOptions) error {
@@ -1102,14 +1045,6 @@ func (p *dockerProvisioner) RemoveNode(ctx context.Context, opts provision.Remov
 		}
 	}
 	return p.Cluster().Unregister(opts.Address)
-}
-
-func (p *dockerProvisioner) UpgradeNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
-	return internalNodeContainer.RecreateNamedContainers(p, writer, name, pool)
-}
-
-func (p *dockerProvisioner) RemoveNodeContainer(ctx context.Context, name string, pool string, writer io.Writer) error {
-	return internalNodeContainer.RemoveNamedContainers(p, writer, name, pool)
 }
 
 func (p *dockerProvisioner) RebalanceNodes(ctx context.Context, opts provision.RebalanceNodesOptions) (bool, error) {

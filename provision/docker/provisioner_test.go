@@ -33,10 +33,8 @@ import (
 	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	internalNodeContainer "github.com/tsuru/tsuru/provision/docker/nodecontainer"
 	"github.com/tsuru/tsuru/provision/docker/types"
 	"github.com/tsuru/tsuru/provision/dockercommon"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/pool"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
@@ -2106,59 +2104,6 @@ func (s *S) TestInitializeSetsBSHook(c *check.C) {
 	err := p.Initialize()
 	c.Assert(err, check.IsNil)
 	c.Assert(p.cluster, check.NotNil)
-	c.Assert(p.cluster.Hooks(cluster.HookEventBeforeContainerCreate), check.DeepEquals, []cluster.Hook{&internalNodeContainer.ClusterHook{Provisioner: &p}})
-}
-
-func (s *S) TestProvisionerLogsEnabled(c *check.C) {
-	appName := "my-fake-app"
-	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
-	fakeApp.Pool = "mypool"
-	tests := []struct {
-		envs     []string
-		poolEnvs map[string][]string
-		enabled  bool
-		msg      string
-		err      error
-	}{
-		{nil, nil, true, "", nil},
-		{[]string{}, nil, true, "", nil},
-		{[]string{"LOG_BACKENDS=xxx"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx", nil},
-		{[]string{"LOG_BACKENDS=xxx", "LOG_XXX_DOC=my doc"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* xxx: my doc", nil},
-		{[]string{"LOG_BACKENDS=a, b , c"}, nil, false, "Logs not available through tsuru. Enabled log backends are:\n* a\n* b\n* c", nil},
-		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc", nil},
-		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc", "LOG_ABC_DOC=doc"}}, false, "Logs not available through tsuru. Enabled log backends are:\n* abc: doc", nil},
-		{[]string{}, map[string][]string{"otherpool": {"LOG_BACKENDS=abc"}}, true, "", nil},
-		{[]string{}, map[string][]string{"mypool": {"LOG_BACKENDS=abc, tsuru "}}, true, "", nil},
-	}
-	for i, t := range tests {
-		if t.envs != nil || t.poolEnvs != nil {
-			err := nodecontainer.AddNewContainer("", &nodecontainer.NodeContainerConfig{
-				Name: nodecontainer.BsDefaultName,
-				Config: docker.Config{
-					Env:   t.envs,
-					Image: "img1",
-				},
-			})
-			c.Assert(err, check.IsNil)
-			for pool, envs := range t.poolEnvs {
-				err := nodecontainer.AddNewContainer(pool, &nodecontainer.NodeContainerConfig{
-					Name: nodecontainer.BsDefaultName,
-					Config: docker.Config{
-						Env: envs,
-					},
-				})
-				c.Assert(err, check.IsNil)
-			}
-		}
-		enabled, msg, err := s.p.LogsEnabled(fakeApp)
-		c.Assert(err, check.Equals, t.err)
-		c.Assert(enabled, check.Equals, t.enabled, check.Commentf("%d test", i))
-		c.Assert(msg, check.Equals, t.msg)
-		for pool := range t.poolEnvs {
-			err = nodecontainer.RemoveContainer(pool, nodecontainer.BsDefaultName)
-			c.Assert(err, check.IsNil)
-		}
-	}
 }
 
 func (s *S) TestProvisionerLogsEnabledOtherDriver(c *check.C) {

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/nodecontainer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/servicemanager"
 	appTypes "github.com/tsuru/tsuru/types/app"
@@ -36,21 +35,6 @@ func (s *S) TestServiceAccountNameForApp(c *check.C) {
 	for i, tt := range tests {
 		a := provisiontest.NewFakeApp(tt.name, "plat", 1)
 		c.Check(serviceAccountNameForApp(a), check.Equals, tt.expected, check.Commentf("test %d", i))
-	}
-}
-
-func (s *S) TestServiceAccountNameForNodeContainer(c *check.C) {
-	var tests = []struct {
-		name, expected string
-	}{
-		{"mync", "node-container-mync"},
-		{"MYNC", "node-container-mync"},
-		{"my-nc_nc", "node-container-my-nc-nc"},
-	}
-	for i, tt := range tests {
-		c.Check(serviceAccountNameForNodeContainer(nodecontainer.NodeContainerConfig{
-			Name: tt.name,
-		}), check.Equals, tt.expected, check.Commentf("test %d", i))
 	}
 }
 
@@ -565,42 +549,6 @@ func (s *S) TestCleanupReplicas(c *check.C) {
 	replicas, err := s.client.AppsV1().ReplicaSets(ns).List(context.TODO(), metav1.ListOptions{})
 	c.Assert(err, check.IsNil)
 	c.Assert(replicas.Items, check.HasLen, 0)
-}
-
-func (s *S) TestCleanupDaemonSet(c *check.C) {
-	ns := s.client.PoolNamespace("pool")
-	ds, err := s.client.AppsV1().DaemonSets(ns).Create(context.TODO(), &appsv1.DaemonSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1",
-			Namespace: ns,
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	_, err = s.client.CoreV1().Pods(ns).Create(context.TODO(), &apiv1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "node-container-bs-pool-p1-xyz",
-			Namespace: ns,
-			Labels: map[string]string{
-				"tsuru.io/is-tsuru":            "true",
-				"tsuru.io/is-node-container":   "true",
-				"tsuru.io/provisioner":         provisionerName,
-				"tsuru.io/node-container-name": "bs",
-				"tsuru.io/node-container-pool": "p1",
-			},
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(ds, appsv1.SchemeGroupVersion.WithKind("DaemonSet")),
-			},
-		},
-	}, metav1.CreateOptions{})
-	c.Assert(err, check.IsNil)
-	err = cleanupDaemonSet(context.TODO(), s.clusterClient, "bs", "p1")
-	c.Assert(err, check.IsNil)
-	daemons, err := s.client.AppsV1().DaemonSets(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(daemons.Items, check.HasLen, 0)
-	pods, err := s.client.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
-	c.Assert(err, check.IsNil)
-	c.Assert(pods.Items, check.HasLen, 0)
 }
 
 func (s *S) TestLabelSetFromMeta(c *check.C) {
