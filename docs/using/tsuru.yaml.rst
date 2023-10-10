@@ -7,7 +7,7 @@
 tsuru.yaml
 ++++++++++
 
-tsuru.yaml is a special file located in the root of the application. The name of
+tsuru.yaml is a special file located in the root path of the application deployment, also known as ``/``. The name of
 the file may be ``tsuru.yaml`` or ``tsuru.yml``.
 
 This file is used to describe certain aspects of your app. Currently, it describes
